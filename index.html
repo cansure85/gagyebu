@@ -199,6 +199,36 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .set-btns .danger { color: var(--over); }
 .set-btns .danger.armed { background: var(--over); color: #fff; border-color: var(--over); }
 
+/* 카드 */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: 13px; }
+.chips button.on { border-color: var(--accent); background: var(--accent-soft); font-weight: 700; }
+.chips .add { color: var(--accent); border-style: dashed; }
+.kind-tag { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 6px; background: var(--track); color: var(--muted); margin-left: 6px; vertical-align: 1px; }
+.kind-tag.local { color: var(--ok); }
+.cc { display: flex; flex-direction: column; gap: 6px; width: 100%; padding: 12px 4px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; border-radius: 0; }
+.cc:first-child { border-top: 0; padding-top: 2px; }
+.cc.on { background: var(--accent-soft); border-radius: 10px; }
+.cc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.cc-head b { font-weight: 700; }
+.cc-head .num { font-weight: 700; white-space: nowrap; }
+.cc-line { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+.cc-line .num { color: var(--ink); font-weight: 600; white-space: nowrap; }
+.cc-rule { font-size: 12px; color: var(--muted); }
+.state { font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 6px; margin-left: 4px; background: var(--track); }
+.state.fixed { color: var(--over); }
+.state.open { color: var(--accent); }
+.minus { color: var(--over) !important; }
+.inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 15px; }
+.inline .text-in { width: auto; }
+.day-in { width: 76px !important; text-align: center; }
+.note { font-size: 13px; color: var(--muted); background: var(--bg); border-radius: 10px; padding: 10px 12px; line-height: 1.55; }
+.note b { color: var(--ink); }
+.manage { display: flex; flex-direction: column; }
+.manage button.m-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 10px 2px; text-align: left; width: 100%; }
+.manage .m-row span { font-size: 12px; color: var(--muted); }
+.row-amt.charge { color: var(--muted); font-weight: 600; }
+
 .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 40; white-space: nowrap; }
 </style>
 </head>
@@ -241,6 +271,11 @@ header { display: flex; align-items: center; justify-content: space-between; gap
     <div id="catBox"></div>
   </section>
 
+  <section class="card" aria-label="카드">
+    <div class="sec-head"><h2>카드</h2><button class="link-btn" data-open-settings>카드 관리</button></div>
+    <div id="cardBox"></div>
+  </section>
+
   <section class="card" aria-label="기록 목록">
     <div class="sec-head"><h2>기록</h2><span class="label num" id="countLabel"></span></div>
     <div class="filter-bar" id="filterBar" hidden></div>
@@ -258,6 +293,7 @@ header { display: flex; align-items: center; justify-content: space-between; gap
     <div class="seg" id="typeSeg">
       <button data-type="out" class="on">지출</button>
       <button data-type="in">수입</button>
+      <button data-type="charge">충전</button>
     </div>
     <div class="field">
       <label for="amount">금액</label>
@@ -266,15 +302,26 @@ header { display: flex; align-items: center; justify-content: space-between; gap
         <button data-add="1000">+1천</button><button data-add="10000">+1만</button><button data-add="50000">+5만</button><button data-add="100000">+10만</button><button data-add="0">지우기</button>
       </div>
     </div>
-    <div class="field">
+    <div class="field" id="catField">
       <span class="label">분류</span>
       <div class="cats" id="catPick"></div>
+    </div>
+    <div class="field" id="chargeField" hidden>
+      <span class="label">충전할 지역화폐</span>
+      <div class="chips" id="localPick"></div>
+      <label for="bonus" style="margin-top:6px">충전 보너스(인센티브)</label>
+      <div class="amount-box"><input id="bonus" class="num" inputmode="numeric" autocomplete="off" placeholder="0"><span>원</span></div>
+      <p class="note">충전은 통장 돈을 지역화폐로 옮기는 거라 <b>지출로 세지 않아요</b>. 지역화폐로 결제할 때 지출로 기록돼요.</p>
     </div>
     <div class="two">
       <div class="field"><label for="date">날짜</label><input type="date" id="date" class="text-in"></div>
       <div class="field" id="payField"><span class="label">결제</span>
         <div class="seg" id="paySeg"><button data-pay="카드" class="on">카드</button><button data-pay="현금">현금</button><button data-pay="이체">이체</button></div>
       </div>
+    </div>
+    <div class="field" id="cardField">
+      <span class="label">어떤 카드</span>
+      <div class="chips" id="cardPick"></div>
     </div>
     <div class="field"><label for="memo">메모</label><input id="memo" class="text-in" maxlength="40" placeholder="예: 이마트 장보기" autocomplete="off"></div>
     <div class="err" id="addErr"></div>
@@ -297,6 +344,12 @@ header { display: flex; align-items: center; justify-content: space-between; gap
       <p class="budget-tip">0원으로 두면 예산 막대가 숨겨져요.</p>
     </div>
     <div class="set-row">
+      <b>카드</b>
+      <p>카드를 등록하면 기록할 때 고를 수 있고, 결제일과 이번 결제 금액을 볼 수 있어요.</p>
+      <div class="manage" id="cardManage"></div>
+      <div class="set-btns"><button id="addCardBtn">＋ 카드 추가</button></div>
+    </div>
+    <div class="set-row">
       <b>백업</b>
       <p>기록은 이 휴대폰에만 저장돼요. 휴대폰을 바꾸거나 Safari 기록을 지우기 전에 백업 파일을 저장해 두세요. 불러오면 없는 기록만 더해져요.</p>
       <div class="set-btns">
@@ -310,6 +363,40 @@ header { display: flex; align-items: center; justify-content: space-between; gap
       <b>모두 지우기</b>
       <p>모든 기록과 예산을 지워요. 되돌릴 수 없어요.</p>
       <div class="set-btns"><button class="danger" id="wipeBtn">모든 기록 지우기</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- 카드 등록 창 -->
+<div class="scrim" id="cardScrim" style="z-index:30" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cardTitle">
+    <div class="grab"></div>
+    <div class="sheet-head"><h3 id="cardTitle">카드 추가</h3><button class="icon-btn" id="closeCard" aria-label="닫기">✕</button></div>
+    <div class="field"><label for="cName">카드 이름</label><input id="cName" class="text-in" maxlength="20" placeholder="예: 신한 딥드림, 경기지역화폐" autocomplete="off"></div>
+    <div class="field"><span class="label">종류</span>
+      <div class="seg" id="cKindSeg"><button data-kind="credit">신용카드</button><button data-kind="check">체크카드</button><button data-kind="local">지역화폐</button></div>
+    </div>
+    <div id="creditFields" class="field" style="gap:14px">
+      <div class="field"><label for="cPayDay">결제일</label>
+        <div class="inline">매달 <input id="cPayDay" class="text-in day-in num" type="number" inputmode="numeric" min="1" max="31"> 일</div>
+      </div>
+      <div class="field"><label for="cStart">이용기간 (결제일에 묶이는 기간)</label>
+        <div class="inline">
+          <select id="cOffset" class="text-in"><option value="1">전월</option><option value="2">전전월</option></select>
+          <input id="cStart" class="text-in day-in num" type="number" inputmode="numeric" min="1" max="31"> 일부터 한 달
+        </div>
+      </div>
+      <p class="note" id="cPreview"></p>
+    </div>
+    <div id="localFields" class="field" hidden>
+      <label for="cBonus">충전 보너스 비율 (없으면 0)</label>
+      <div class="inline"><input id="cBonus" class="text-in day-in num" type="number" inputmode="decimal" min="0" max="50" step="0.5"> %</div>
+      <p class="note">충전할 때 보너스가 자동으로 계산돼요. 잔액은 <b>충전 + 보너스 − 쓴 돈</b>으로 보여 드려요.</p>
+    </div>
+    <div class="err" id="cErr"></div>
+    <div class="actions">
+      <button class="btn ghost" id="cDel" hidden>삭제</button>
+      <button class="btn" id="cSave">저장</button>
     </div>
   </div>
 </div>
@@ -339,6 +426,7 @@ const IN_CATS = [
 ];
 const ALL_CATS = Object.fromEntries([...OUT_CATS, ...IN_CATS].map((c) => [c.id, c]));
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
+const KINDS = { credit: "신용", check: "체크", local: "지역화폐" };
 
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2, "0");
@@ -387,10 +475,10 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.items)) return { budget: 0, ...d };
+      if (d && Array.isArray(d.items)) return { budget: 0, ...d, cards: Array.isArray(d.cards) ? d.cards : [] };
     }
   } catch (e) {}
-  return { v: 1, budget: 2000000, items: makeSamples() };
+  return { v: 1, budget: 2000000, cards: [], items: makeSamples() };
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
@@ -399,8 +487,55 @@ function save() {
 
 let data = load();
 let ym = curYm();
-let filterCat = null;
+let filter = null; // { k: "cat" | "card", id }
 let form = null;
+
+/* ---------- 카드 계산 ---------- */
+const cardById = (id) => data.cards.find((c) => c.id === id);
+const localCards = () => data.cards.filter((c) => c.kind === "local");
+// 그 달에 없는 날(31일 등)은 말일로 맞춰요. m0는 0부터 세는 달이고 넘쳐도 돼요.
+function dateAt(y, m0, day) {
+  const last = new Date(y, m0 + 1, 0).getDate();
+  return new Date(y, m0, Math.min(day, last));
+}
+const md = (d) => `${d.getMonth() + 1}월 ${d.getDate()}일`;
+const dot = (d) => `${d.getMonth() + 1}.${d.getDate()}`;
+// 결제월(y, m0)에 빠져나가는 이용기간
+function period(card, y, m0) {
+  const sm = m0 - card.offset;
+  const start = dateAt(y, sm, card.startDay);
+  const next = dateAt(y, sm + 1, card.startDay);
+  const end = new Date(next.getFullYear(), next.getMonth(), next.getDate() - 1);
+  return { start, end, pay: dateAt(y, m0, card.payDay) };
+}
+// 아직 안 빠져나갔고 이미 시작된 결제 (가까운 것부터 최대 2개)
+function upcoming(card) {
+  const now = new Date();
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const out = [];
+  for (let k = -1; k <= 3; k++) {
+    const p = period(card, t.getFullYear(), t.getMonth() + k);
+    if (p.pay >= t && p.start <= t) out.push({ ...p, closed: p.end < t });
+  }
+  return out.slice(0, 2);
+}
+function ruleText(c) {
+  const from = c.offset === 2 ? "전전월" : "전월";
+  const to = c.startDay === 1 ? `${from} 말일` : `${c.offset === 2 ? "전월" : "당월"} ${c.startDay - 1}일`;
+  return `매달 ${c.payDay}일 결제 · ${from} ${c.startDay}일 ~ ${to} 사용분`;
+}
+const sumCard = (id, from, to) => data.items
+  .filter((i) => i.type === "out" && i.cardId === id && (!from || (i.date >= from && i.date <= to)))
+  .reduce((s, i) => s + i.amount, 0);
+function localBalance(id) {
+  const charged = data.items.filter((i) => i.type === "charge" && i.cardId === id).reduce((s, i) => s + i.amount + (i.bonus || 0), 0);
+  return charged - sumCard(id);
+}
+function payLabel(i) {
+  if (i.pay !== "카드") return i.pay;
+  const c = cardById(i.cardId);
+  return c ? c.name : "카드";
+}
 
 const hasSamples = () => data.items.some((i) => i.sample);
 function dropSamples() { data.items = data.items.filter((i) => !i.sample); }
@@ -409,7 +544,7 @@ function shiftMonth(delta) {
   const [y, m] = ym.split("-").map(Number);
   const d = new Date(y, m - 1 + delta, 1);
   ym = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
-  filterCat = null;
+  filter = null;
   render();
 }
 
@@ -432,7 +567,39 @@ function render() {
   renderBudget(totalOut, y, m);
   renderDaily(outs, y, m);
   renderCats(outs, totalOut);
+  renderCards(items);
   renderList(items);
+}
+
+function renderCards(items) {
+  const box = $("cardBox");
+  if (!data.cards.length) {
+    box.innerHTML = `<div class="empty-note">카드를 등록하면 카드별 결제일, 이번에 빠져나갈 금액, 지역화폐 잔액을 보여 드려요.</div>
+      <div class="chips" style="margin-top:8px"><button class="add" data-new-card>＋ 카드 등록</button></div>`;
+    return;
+  }
+  const monthOut = (id) => items.filter((i) => i.type === "out" && i.cardId === id).reduce((s, i) => s + i.amount, 0);
+  box.innerHTML = data.cards.map((c) => {
+    const on = filter && filter.k === "card" && filter.id === c.id ? " on" : "";
+    let head = "", lines = "";
+    if (c.kind === "local") {
+      const bal = localBalance(c.id);
+      const charged = items.filter((i) => i.type === "charge" && i.cardId === c.id).reduce((s, i) => s + i.amount + (i.bonus || 0), 0);
+      head = `<span class="num${bal < 0 ? " minus" : ""}">잔액 ${won(bal)}원</span>`;
+      lines = `<div class="cc-line"><span>이 달 충전</span><span class="num">${won(charged)}원</span></div>
+        <div class="cc-line"><span>이 달 사용</span><span class="num">${won(monthOut(c.id))}원</span></div>`;
+    } else {
+      head = `<span class="num">이 달 ${won(monthOut(c.id))}원</span>`;
+      if (c.kind === "credit") {
+        lines = upcoming(c).map((p) => `<div class="cc-line">
+            <span>${md(p.pay)} 결제<span class="state ${p.closed ? "fixed" : "open"}">${p.closed ? "확정" : "쌓이는 중"}</span> · ${dot(p.start)}~${dot(p.end)}</span>
+            <span class="num">${won(sumCard(c.id, ymd(p.start), ymd(p.end)))}원</span></div>`).join("") +
+          `<div class="cc-rule">${ruleText(c)}</div>`;
+      }
+    }
+    return `<button class="cc${on}" data-filter-card="${esc(c.id)}">
+      <div class="cc-head"><span><b>${esc(c.name)}</b><span class="kind-tag ${c.kind}">${KINDS[c.kind]}</span></span>${head}</div>${lines}</button>`;
+  }).join("");
 }
 
 function renderBudget(spent, y, m) {
@@ -494,7 +661,7 @@ function renderCats(outs, total) {
   const cat = (id) => ALL_CATS[id] || ALL_CATS.etc;
   let s = `<div class="stack">` + rows.map(([id, v]) => `<i style="width:${(v / total) * 100}%;background:${cat(id).color}"></i>`).join("") + `</div>`;
   s += `<ul class="cat-list">` + rows.map(([id, v]) => `
-    <li><button class="cat-row${filterCat === id ? " on" : ""}" data-filter="${id}">
+    <li><button class="cat-row${filter && filter.k === "cat" && filter.id === id ? " on" : ""}" data-filter="${id}">
       <span class="dot" style="background:${cat(id).color}"></span>
       <span>${cat(id).name}</span>
       <span class="pct num">${Math.round((v / total) * 100)}%</span>
@@ -504,12 +671,13 @@ function renderCats(outs, total) {
 }
 
 function renderList(items) {
-  let shown = filterCat ? items.filter((i) => i.cat === filterCat) : items;
+  let shown = !filter ? items : items.filter((i) => (filter.k === "cat" ? i.cat === filter.id : i.cardId === filter.id));
   const fb = $("filterBar");
-  if (filterCat) {
-    const sum = shown.reduce((s, i) => s + i.amount, 0);
+  if (filter) {
+    const sum = shown.filter((i) => i.type !== "charge").reduce((s, i) => s + i.amount, 0);
+    const name = filter.k === "cat" ? ALL_CATS[filter.id]?.name || "기타" : cardById(filter.id)?.name || "카드";
     fb.hidden = false;
-    fb.innerHTML = `<span><b>${ALL_CATS[filterCat]?.name || "기타"}</b>만 보는 중 · <span class="num">${won(sum)}원</span></span><button data-filter-clear>전체 보기</button>`;
+    fb.innerHTML = `<span><b>${esc(name)}</b>만 보는 중 · <span class="num">${won(sum)}원</span></span><button data-filter-clear>전체 보기</button>`;
   } else fb.hidden = true;
   $("countLabel").textContent = shown.length ? `${shown.length}건` : "";
   if (!shown.length) {
@@ -529,8 +697,16 @@ function renderList(items) {
     const label = `${d.getMonth() + 1}월 ${d.getDate()}일 <span class="${wd === 0 ? "sun" : wd === 6 ? "sat" : ""}">(${WEEK[wd]})</span>${g.date === todayStr() ? " · 오늘" : ""}`;
     return `<div class="day"><div class="day-head"><span>${label}</span><span class="num">${out ? "지출 " + won(out) + "원" : ""}</span></div>` +
       g.items.map((i) => {
+        if (i.type === "charge") {
+          const card = cardById(i.cardId);
+          return `<button class="row" data-edit="${esc(i.id)}">
+            <span class="badge" style="background:var(--ok)">충</span>
+            <span class="row-main"><b>${esc(i.memo || (card ? card.name : "지역화폐") + " 충전")}</b><span>충전${i.bonus ? " · 보너스 " + won(i.bonus) + "원" : ""} · 지출 아님</span></span>
+            <span class="row-amt num charge">${won(i.amount)}</span>
+          </button>`;
+        }
         const c = ALL_CATS[i.cat] || ALL_CATS.etc;
-        const sub = [c.name, i.type === "out" ? i.pay : null].filter(Boolean).join(" · ");
+        const sub = [c.name, i.type === "out" ? payLabel(i) : null].filter(Boolean).join(" · ");
         return `<button class="row" data-edit="${esc(i.id)}">
           <span class="badge" style="background:${c.color}">${esc(c.name.slice(0, 1))}</span>
           <span class="row-main"><b>${esc(i.memo || c.name)}${i.sample ? '<span class="sample-tag">예시</span>' : ""}</b><span>${esc(sub)}</span></span>
@@ -542,13 +718,20 @@ function renderList(items) {
 
 /* ---------- 기록 창 ---------- */
 function openSheet(id) { $(id).hidden = false; document.body.classList.add("lock"); }
-function closeSheet(id) { $(id).hidden = true; if ($("addScrim").hidden && $("setScrim").hidden) document.body.classList.remove("lock"); }
+function closeSheet(id) {
+  $(id).hidden = true;
+  if ($("addScrim").hidden && $("setScrim").hidden && $("cardScrim").hidden) document.body.classList.remove("lock");
+}
 
 function openAdd(item) {
   const defDate = ym === curYm() ? todayStr() : `${ym}-01`;
-  form = item ? { ...item } : { id: null, type: "out", amount: 0, cat: "mart", pay: "카드", memo: "", date: defDate };
+  // 카드가 하나뿐이면 미리 골라 둬요
+  const only = data.cards.filter((c) => c.kind !== "local");
+  form = item ? { ...item } : { id: null, type: "out", amount: 0, cat: "mart", pay: "카드", cardId: only.length === 1 ? only[0].id : null, memo: "", date: defDate };
+  form.bonusTouched = !!item;
   $("addTitle").textContent = item ? "기록 고치기" : "기록하기";
   $("amount").value = form.amount ? won(form.amount) : "";
+  $("bonus").value = form.bonus ? won(form.bonus) : "";
   $("memo").value = form.memo || "";
   $("date").value = form.date;
   $("addErr").textContent = "";
@@ -561,10 +744,30 @@ function openAdd(item) {
 function syncForm() {
   document.querySelectorAll("#typeSeg button").forEach((b) => b.classList.toggle("on", b.dataset.type === form.type));
   document.querySelectorAll("#paySeg button").forEach((b) => b.classList.toggle("on", b.dataset.pay === form.pay));
+  const charge = form.type === "charge";
   $("payField").style.visibility = form.type === "out" ? "visible" : "hidden";
+  $("catField").hidden = charge;
+  $("chargeField").hidden = !charge;
+  $("cardField").hidden = !(form.type === "out" && form.pay === "카드");
+  if (charge) {
+    const locals = localCards();
+    if (!locals.some((c) => c.id === form.cardId)) form.cardId = locals.length === 1 ? locals[0].id : null;
+    $("localPick").innerHTML = locals.map((c) => `<button data-card="${esc(c.id)}" class="${c.id === form.cardId ? "on" : ""}">${esc(c.name)}</button>`).join("") +
+      `<button class="add" data-new-card="local">＋ 지역화폐 등록</button>`;
+    return;
+  }
+  $("cardPick").innerHTML = data.cards.map((c) => `<button data-card="${esc(c.id)}" class="${c.id === form.cardId ? "on" : ""}">${esc(c.name)}</button>`).join("") +
+    `<button class="add" data-new-card>＋ 카드 등록</button>`;
   const cats = form.type === "out" ? OUT_CATS : IN_CATS;
   if (!cats.some((c) => c.id === form.cat)) form.cat = cats[0].id;
   $("catPick").innerHTML = cats.map((c) => `<button data-cat="${c.id}" class="${c.id === form.cat ? "on" : ""}"><span class="dot" style="background:${c.color}"></span>${c.name}</button>`).join("");
+}
+// 지역화폐 보너스를 비율대로 미리 채워요 (직접 고치면 그대로 둬요)
+function autoBonus() {
+  if (form.type !== "charge" || form.bonusTouched) return;
+  const c = cardById(form.cardId);
+  const v = c && c.bonusRate ? Math.round((digits($("amount").value) * c.bonusRate) / 100) : 0;
+  $("bonus").value = v ? won(v) : "";
 }
 function saveForm() {
   form.amount = digits($("amount").value);
@@ -572,6 +775,15 @@ function saveForm() {
   form.date = $("date").value;
   if (!form.amount) { $("addErr").textContent = "금액을 입력해 주세요."; $("amount").focus(); return; }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.date)) { $("addErr").textContent = "날짜를 골라 주세요."; return; }
+  if (form.type === "charge") {
+    if (!cardById(form.cardId)) { $("addErr").textContent = "충전할 지역화폐를 골라 주세요."; return; }
+    form.bonus = digits($("bonus").value);
+    form.cat = null; form.pay = null;
+  } else {
+    delete form.bonus;
+    if (form.type !== "out" || form.pay !== "카드") form.cardId = null;
+  }
+  delete form.bonusTouched;
   const wasSample = form.sample;
   delete form.sample;
   if (form.id && !wasSample) {
@@ -586,7 +798,7 @@ function saveForm() {
   ym = form.date.slice(0, 7);
   closeSheet("addScrim");
   render();
-  toast(`${form.type === "out" ? "지출" : "수입"} ${won(form.amount)}원을 기록했어요`);
+  toast(`${{ out: "지출", in: "수입", charge: "충전" }[form.type]} ${won(form.amount)}원을 기록했어요`);
 }
 
 // 두 번 눌러야 지워지는 버튼
@@ -626,7 +838,7 @@ const realItems = () => data.items.filter((i) => !i.sample);
 /* ---------- 이벤트 ---------- */
 $("prev").onclick = () => shiftMonth(-1);
 $("next").onclick = () => shiftMonth(1);
-$("thisMonth").onclick = () => { ym = curYm(); filterCat = null; render(); };
+$("thisMonth").onclick = () => { ym = curYm(); filter = null; render(); };
 $("openAdd").onclick = () => openAdd(null);
 $("closeAdd").onclick = () => closeSheet("addScrim");
 $("saveBtn").onclick = saveForm;
@@ -638,6 +850,15 @@ $("delBtn").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 삭제"
 
 $("typeSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.type = b.dataset.type; syncForm(); } };
 $("paySeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.pay = b.dataset.pay; syncForm(); } };
+function pickCard(e) {
+  const b = e.target.closest("[data-card]"); if (!b) return;
+  form.cardId = b.dataset.card;
+  syncForm(); autoBonus();
+}
+$("cardPick").onclick = pickCard;
+$("localPick").onclick = pickCard;
+$("bonus").addEventListener("input", () => { form.bonusTouched = true; });
+$("amount").addEventListener("input", autoBonus);
 $("catPick").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.cat = b.dataset.cat; syncForm(); } };
 $("quick").onclick = (e) => {
   const b = e.target.closest("button"); if (!b) return;
@@ -645,6 +866,7 @@ $("quick").onclick = (e) => {
   const v = add ? digits($("amount").value) + add : 0;
   $("amount").value = v ? won(v) : "";
   $("addErr").textContent = "";
+  autoBonus();
 };
 function moneyInput(el) {
   el.addEventListener("input", () => {
@@ -654,30 +876,110 @@ function moneyInput(el) {
 }
 moneyInput($("amount"));
 moneyInput($("budgetIn"));
+moneyInput($("bonus"));
 $("memo").addEventListener("keydown", (e) => { if (e.key === "Enter") saveForm(); });
 
 document.addEventListener("click", (e) => {
   const edit = e.target.closest("[data-edit]");
   if (edit) { const it = data.items.find((i) => i.id === edit.dataset.edit); if (it) openAdd(it); return; }
-  const f = e.target.closest("[data-filter]");
+  const f = e.target.closest("[data-filter], [data-filter-card]");
   if (f) {
-    filterCat = filterCat === f.dataset.filter ? null : f.dataset.filter; render();
-    if (filterCat) $("list").closest("section").scrollIntoView({ behavior: "smooth", block: "start" });
+    const next = f.dataset.filter ? { k: "cat", id: f.dataset.filter } : { k: "card", id: f.dataset.filterCard };
+    filter = filter && filter.k === next.k && filter.id === next.id ? null : next;
+    render();
+    if (filter) $("list").closest("section").scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
-  if (e.target.closest("[data-filter-clear]")) { filterCat = null; render(); return; }
+  if (e.target.closest("[data-filter-clear]")) { filter = null; render(); return; }
+  const nc = e.target.closest("[data-new-card]");
+  if (nc) { openCard(null, nc.dataset.newCard || "credit"); return; }
+  const ec = e.target.closest("[data-edit-card]");
+  if (ec) { openCard(cardById(ec.dataset.editCard)); return; }
   if (e.target.closest("[data-open-settings]")) { openSettings(); return; }
   if (e.target.classList.contains("scrim")) closeSheet(e.target.id);
 });
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") { closeSheet("addScrim"); closeSheet("setScrim"); }
+  if (e.key !== "Escape") return;
+  if (!$("cardScrim").hidden) closeSheet("cardScrim");
+  else { closeSheet("addScrim"); closeSheet("setScrim"); }
 });
 
+function renderManage() {
+  $("cardManage").innerHTML = data.cards.map((c) => `<button class="m-row" data-edit-card="${esc(c.id)}">
+    <b>${esc(c.name)}<span class="kind-tag ${c.kind}">${KINDS[c.kind]}</span></b>
+    <span>${c.kind === "credit" ? `매달 ${c.payDay}일 결제` : c.kind === "local" ? `잔액 ${won(localBalance(c.id))}원` : "고치기"} ›</span></button>`).join("");
+}
 function openSettings() {
   $("budgetIn").value = data.budget ? won(data.budget) : "";
   disarm($("wipeBtn"), "모든 기록 지우기");
+  renderManage();
   openSheet("setScrim");
 }
+
+/* ---------- 카드 등록 창 ---------- */
+let cform = null;
+function openCard(card, kind) {
+  cform = card ? { ...card } : { id: null, name: "", kind: kind || "credit", payDay: 14, offset: 1, startDay: 1, bonusRate: 0 };
+  $("cardTitle").textContent = card ? "카드 고치기" : "카드 추가";
+  $("cName").value = cform.name;
+  $("cPayDay").value = cform.payDay || 14;
+  $("cOffset").value = String(cform.offset || 1);
+  $("cStart").value = cform.startDay || 1;
+  $("cBonus").value = cform.bonusRate || 0;
+  $("cErr").textContent = "";
+  $("cDel").hidden = !card;
+  disarm($("cDel"), "삭제");
+  syncCard();
+  openSheet("cardScrim");
+  if (!card) setTimeout(() => $("cName").focus(), 60);
+}
+const dayVal = (id) => Math.round(Number($(id).value));
+const okDay = (n) => Number.isInteger(n) && n >= 1 && n <= 31;
+function syncCard() {
+  document.querySelectorAll("#cKindSeg button").forEach((b) => b.classList.toggle("on", b.dataset.kind === cform.kind));
+  $("creditFields").hidden = cform.kind !== "credit";
+  $("localFields").hidden = cform.kind !== "local";
+  const c = { payDay: dayVal("cPayDay"), offset: Number($("cOffset").value), startDay: dayVal("cStart") };
+  if (!okDay(c.payDay) || !okDay(c.startDay)) { $("cPreview").textContent = "날짜는 1일부터 31일 사이로 넣어 주세요."; return; }
+  const next = upcoming(c)[0];
+  $("cPreview").innerHTML = `${ruleText(c)}` + (next ? `<br>다음 결제: <b>${md(next.pay)}</b> (${md(next.start)} ~ ${md(next.end)} 사용분)` : "") +
+    `<br>카드 명세서나 카드사 앱의 '이용기간'을 보고 맞춰 주세요.`;
+}
+$("cKindSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { cform.kind = b.dataset.kind; syncCard(); } };
+["cPayDay", "cOffset", "cStart"].forEach((id) => $(id).addEventListener("input", syncCard));
+$("closeCard").onclick = () => closeSheet("cardScrim");
+$("cSave").onclick = () => {
+  cform.name = $("cName").value.trim();
+  if (!cform.name) { $("cErr").textContent = "카드 이름을 넣어 주세요."; $("cName").focus(); return; }
+  if (cform.kind === "credit") {
+    cform.payDay = dayVal("cPayDay"); cform.offset = Number($("cOffset").value); cform.startDay = dayVal("cStart");
+    if (!okDay(cform.payDay) || !okDay(cform.startDay)) { $("cErr").textContent = "결제일과 이용기간은 1~31일로 넣어 주세요."; return; }
+  }
+  if (cform.kind === "local") cform.bonusRate = Math.max(0, Math.min(50, Number($("cBonus").value) || 0));
+  const isNew = !cform.id;
+  if (isNew) { cform.id = "c" + uid(); data.cards.push(cform); }
+  else data.cards = data.cards.map((c) => (c.id === cform.id ? cform : c));
+  if (!save()) return;
+  closeSheet("cardScrim");
+  // 기록하던 중에 등록했으면 바로 골라 둬요
+  if (!$("addScrim").hidden && isNew) {
+    if (cform.kind === "local" && form.type === "charge") form.cardId = cform.id;
+    else if (form.type === "out") { form.pay = "카드"; form.cardId = cform.id; }
+    syncForm(); autoBonus();
+  }
+  if (!$("setScrim").hidden) renderManage();
+  render();
+  toast(isNew ? `${cform.name}을(를) 등록했어요` : "카드를 고쳤어요");
+};
+$("cDel").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 삭제", () => {
+  data.cards = data.cards.filter((c) => c.id !== cform.id);
+  if (filter && filter.id === cform.id) filter = null;
+  save(); closeSheet("cardScrim");
+  if (!$("setScrim").hidden) renderManage();
+  if (!$("addScrim").hidden) syncForm();
+  render(); toast("카드를 지웠어요. 기록은 그대로 남아요.");
+});
+$("addCardBtn").onclick = () => openCard(null);
 $("openSettings").onclick = openSettings;
 $("closeSet").onclick = () => closeSheet("setScrim");
 $("saveBudget").onclick = () => {
@@ -687,14 +989,22 @@ $("saveBudget").onclick = () => {
 $("backupBtn").onclick = () => {
   const items = realItems();
   if (!items.length) { toast("아직 백업할 기록이 없어요"); return; }
-  download(`가계부-백업-${todayStr()}.json`, JSON.stringify({ v: 1, budget: data.budget, items }, null, 1), "application/json");
+  download(`가계부-백업-${todayStr()}.json`, JSON.stringify({ v: 1, budget: data.budget, cards: data.cards, items }, null, 1), "application/json");
 };
 $("csvBtn").onclick = () => {
   const items = realItems().sort((a, b) => (a.date < b.date ? -1 : 1));
   if (!items.length) { toast("아직 저장할 기록이 없어요"); return; }
   const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
-  const lines = [["날짜", "구분", "분류", "금액", "결제", "메모"].join(",")].concat(items.map((i) =>
-    [i.date, i.type === "out" ? "지출" : "수입", q(ALL_CATS[i.cat]?.name || "기타"), i.type === "out" ? -i.amount : i.amount, i.type === "out" ? i.pay : "", q(i.memo || "")].join(",")));
+  const lines = [["날짜", "구분", "분류", "금액", "결제", "카드", "보너스", "메모"].join(",")].concat(items.map((i) => [
+    i.date,
+    { out: "지출", in: "수입", charge: "충전" }[i.type],
+    q(i.type === "charge" ? "" : ALL_CATS[i.cat]?.name || "기타"),
+    i.type === "out" ? -i.amount : i.amount,
+    i.type === "out" ? i.pay : "",
+    q(cardById(i.cardId)?.name || ""),
+    i.bonus || "",
+    q(i.memo || ""),
+  ].join(",")));
   download(`가계부-${todayStr()}.csv`, "﻿" + lines.join("\n"), "text/csv");
 };
 $("restoreIn").onchange = (e) => {
@@ -706,8 +1016,10 @@ $("restoreIn").onchange = (e) => {
       if (!d || !Array.isArray(d.items)) throw 0;
       dropSamples();
       const have = new Set(data.items.map((i) => i.id));
-      const fresh = d.items.filter((i) => i && i.id && !have.has(i.id) && i.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(i.date) && (i.type === "in" || i.type === "out"));
+      const fresh = d.items.filter((i) => i && i.id && !have.has(i.id) && i.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(i.date) && ["in", "out", "charge"].includes(i.type));
       data.items.push(...fresh);
+      const haveCards = new Set(data.cards.map((c) => c.id));
+      if (Array.isArray(d.cards)) data.cards.push(...d.cards.filter((c) => c && c.id && c.name && KINDS[c.kind] && !haveCards.has(c.id)));
       if (!data.budget && d.budget) data.budget = Number(d.budget) || 0;
       if (save()) { render(); toast(`새 기록 ${fresh.length}건을 불러왔어요`); }
     } catch (err) { toast("가계부 백업 파일이 아니에요"); }
@@ -716,7 +1028,8 @@ $("restoreIn").onchange = (e) => {
   r.readAsText(file);
 };
 $("wipeBtn").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 모두 지워요", () => {
-  data = { v: 1, budget: 0, items: [] };
+  data = { v: 1, budget: 0, cards: [], items: [] };
+  filter = null;
   save(); closeSheet("setScrim"); render(); toast("모두 지웠어요");
 });
 
