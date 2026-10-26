@@ -309,8 +309,12 @@ header { display: flex; align-items: center; justify-content: space-between; gap
     <div class="field" id="chargeField" hidden>
       <span class="label">충전할 지역화폐</span>
       <div class="chips" id="localPick"></div>
-      <label for="bonus" style="margin-top:6px">충전 보너스(인센티브)</label>
-      <div class="amount-box"><input id="bonus" class="num" inputmode="numeric" autocomplete="off" placeholder="0"><span>원</span></div>
+      <label for="bonusRate" style="margin-top:6px">이번 충전 보너스(인센티브)</label>
+      <div class="inline">
+        <input id="bonusRate" class="text-in day-in num" type="number" inputmode="decimal" min="0" max="50" step="0.5" placeholder="0"> %
+        <span style="color:var(--muted)">=</span>
+        <div class="amount-box" style="flex:1;min-width:120px"><input id="bonus" class="num" inputmode="numeric" autocomplete="off" placeholder="0" style="font-size:22px"><span>원</span></div>
+      </div>
       <p class="note">충전은 통장 돈을 지역화폐로 옮기는 거라 <b>지출로 세지 않아요</b>. 지역화폐로 결제할 때 지출로 기록돼요.</p>
     </div>
     <div class="two">
@@ -388,10 +392,17 @@ header { display: flex; align-items: center; justify-content: space-between; gap
       </div>
       <p class="note" id="cPreview"></p>
     </div>
-    <div id="localFields" class="field" hidden>
-      <label for="cBonus">충전 보너스 비율 (없으면 0)</label>
-      <div class="inline"><input id="cBonus" class="text-in day-in num" type="number" inputmode="decimal" min="0" max="50" step="0.5"> %</div>
-      <p class="note">충전할 때 보너스가 자동으로 계산돼요. 잔액은 <b>충전 + 보너스 − 쓴 돈</b>으로 보여 드려요.</p>
+    <div id="localFields" class="field" style="gap:14px" hidden>
+      <div class="field">
+        <label for="cBal">지금 잔액 (지역화폐 앱에 보이는 금액)</label>
+        <div class="amount-box"><input id="cBal" class="num" inputmode="numeric" autocomplete="off" placeholder="0"><span>원</span></div>
+        <p class="note" id="cBalNote">이미 충전해 둔 돈이 있으면 지금 남은 금액을 넣어 주세요. 나중에 금액이 안 맞을 때도 여기서 고치면 돼요.</p>
+      </div>
+      <div class="field">
+        <label for="cBonus">보통 받는 보너스 비율</label>
+        <div class="inline"><input id="cBonus" class="text-in day-in num" type="number" inputmode="decimal" min="0" max="50" step="0.5"> %</div>
+        <p class="note">충전할 때 이 비율이 먼저 채워져요. 그때그때 다르면 충전 기록에서 바꾸면 되고, 마지막에 쓴 비율을 기억해요.</p>
+      </div>
     </div>
     <div class="err" id="cErr"></div>
     <div class="actions">
@@ -527,9 +538,11 @@ function ruleText(c) {
 const sumCard = (id, from, to) => data.items
   .filter((i) => i.type === "out" && i.cardId === id && (!from || (i.date >= from && i.date <= to)))
   .reduce((s, i) => s + i.amount, 0);
+// 시작 잔액(opening) + 충전 + 보너스 − 쓴 돈
 function localBalance(id) {
+  const opening = cardById(id)?.opening || 0;
   const charged = data.items.filter((i) => i.type === "charge" && i.cardId === id).reduce((s, i) => s + i.amount + (i.bonus || 0), 0);
-  return charged - sumCard(id);
+  return opening + charged - sumCard(id);
 }
 function payLabel(i) {
   if (i.pay !== "카드") return i.pay;
@@ -732,6 +745,7 @@ function openAdd(item) {
   $("addTitle").textContent = item ? "기록 고치기" : "기록하기";
   $("amount").value = form.amount ? won(form.amount) : "";
   $("bonus").value = form.bonus ? won(form.bonus) : "";
+  $("bonusRate").value = item && item.rate != null ? item.rate : "";
   $("memo").value = form.memo || "";
   $("date").value = form.date;
   $("addErr").textContent = "";
@@ -762,12 +776,17 @@ function syncForm() {
   if (!cats.some((c) => c.id === form.cat)) form.cat = cats[0].id;
   $("catPick").innerHTML = cats.map((c) => `<button data-cat="${c.id}" class="${c.id === form.cat ? "on" : ""}"><span class="dot" style="background:${c.color}"></span>${c.name}</button>`).join("");
 }
-// 지역화폐 보너스를 비율대로 미리 채워요 (직접 고치면 그대로 둬요)
+// 지역화폐 보너스를 비율대로 미리 채워요 (보너스 금액을 직접 고치면 그대로 둬요)
 function autoBonus() {
   if (form.type !== "charge" || form.bonusTouched) return;
-  const c = cardById(form.cardId);
-  const v = c && c.bonusRate ? Math.round((digits($("amount").value) * c.bonusRate) / 100) : 0;
+  const rate = Number($("bonusRate").value) || 0;
+  const v = Math.round((digits($("amount").value) * rate) / 100);
   $("bonus").value = v ? won(v) : "";
+}
+// 지역화폐를 고르면 그 카드의 보통 비율을 채워요
+function fillRate() {
+  const c = cardById(form.cardId);
+  if (form.type === "charge" && c && !form.id) $("bonusRate").value = c.bonusRate || "";
 }
 function saveForm() {
   form.amount = digits($("amount").value);
@@ -778,9 +797,11 @@ function saveForm() {
   if (form.type === "charge") {
     if (!cardById(form.cardId)) { $("addErr").textContent = "충전할 지역화폐를 골라 주세요."; return; }
     form.bonus = digits($("bonus").value);
+    form.rate = Math.max(0, Math.min(50, Number($("bonusRate").value) || 0));
     form.cat = null; form.pay = null;
+    cardById(form.cardId).bonusRate = form.rate; // 다음 충전 때 이 비율을 먼저 채워요
   } else {
-    delete form.bonus;
+    delete form.bonus; delete form.rate;
     if (form.type !== "out" || form.pay !== "카드") form.cardId = null;
   }
   delete form.bonusTouched;
@@ -848,16 +869,17 @@ $("delBtn").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 삭제"
   save(); closeSheet("addScrim"); render(); toast("기록을 지웠어요");
 });
 
-$("typeSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.type = b.dataset.type; syncForm(); } };
+$("typeSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.type = b.dataset.type; syncForm(); fillRate(); autoBonus(); } };
 $("paySeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.pay = b.dataset.pay; syncForm(); } };
 function pickCard(e) {
   const b = e.target.closest("[data-card]"); if (!b) return;
   form.cardId = b.dataset.card;
-  syncForm(); autoBonus();
+  syncForm(); fillRate(); autoBonus();
 }
 $("cardPick").onclick = pickCard;
 $("localPick").onclick = pickCard;
 $("bonus").addEventListener("input", () => { form.bonusTouched = true; });
+$("bonusRate").addEventListener("input", () => { form.bonusTouched = false; autoBonus(); });
 $("amount").addEventListener("input", autoBonus);
 $("catPick").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.cat = b.dataset.cat; syncForm(); } };
 $("quick").onclick = (e) => {
@@ -877,6 +899,7 @@ function moneyInput(el) {
 moneyInput($("amount"));
 moneyInput($("budgetIn"));
 moneyInput($("bonus"));
+moneyInput($("cBal"));
 $("memo").addEventListener("keydown", (e) => { if (e.key === "Enter") saveForm(); });
 
 document.addEventListener("click", (e) => {
@@ -926,6 +949,7 @@ function openCard(card, kind) {
   $("cOffset").value = String(cform.offset || 1);
   $("cStart").value = cform.startDay || 1;
   $("cBonus").value = cform.bonusRate || 0;
+  $("cBal").value = card && card.kind === "local" ? won(localBalance(card.id)) : "";
   $("cErr").textContent = "";
   $("cDel").hidden = !card;
   disarm($("cDel"), "삭제");
@@ -955,7 +979,14 @@ $("cSave").onclick = () => {
     cform.payDay = dayVal("cPayDay"); cform.offset = Number($("cOffset").value); cform.startDay = dayVal("cStart");
     if (!okDay(cform.payDay) || !okDay(cform.startDay)) { $("cErr").textContent = "결제일과 이용기간은 1~31일로 넣어 주세요."; return; }
   }
-  if (cform.kind === "local") cform.bonusRate = Math.max(0, Math.min(50, Number($("cBonus").value) || 0));
+  if (cform.kind === "local") {
+    cform.bonusRate = Math.max(0, Math.min(50, Number($("cBonus").value) || 0));
+    // 넣은 잔액과 계산한 잔액의 차이만큼 시작 잔액을 맞춰요 (칸을 비우면 그대로)
+    if ($("cBal").value.trim() !== "") {
+      const now = cform.id ? localBalance(cform.id) : 0;
+      cform.opening = (cform.opening || 0) + digits($("cBal").value) - now;
+    }
+  }
   const isNew = !cform.id;
   if (isNew) { cform.id = "c" + uid(); data.cards.push(cform); }
   else data.cards = data.cards.map((c) => (c.id === cform.id ? cform : c));
