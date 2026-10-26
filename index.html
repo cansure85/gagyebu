@@ -228,6 +228,15 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .manage button.m-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 0; border-bottom: 1px solid var(--line); background: none; padding: 10px 2px; text-align: left; width: 100%; }
 .manage .m-row span { font-size: 12px; color: var(--muted); }
 .row-amt.charge { color: var(--muted); font-weight: 600; }
+.k-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 4px; border-bottom: 1px solid var(--line); }
+.k-row .k-name { display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 10px 2px; text-align: left; min-width: 0; }
+.k-row .k-name span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.k-row .k-name small { color: var(--muted); font-size: 12px; margin-left: auto; }
+.k-row .icon-btn { width: 36px; height: 36px; font-size: 16px; }
+.k-row .icon-btn:disabled { opacity: .25; cursor: default; }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.swatches button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
+.swatches button.on { box-shadow: 0 0 0 2px var(--ink); }
 
 .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 40; white-space: nowrap; }
 </style>
@@ -348,6 +357,13 @@ header { display: flex; align-items: center; justify-content: space-between; gap
       <p class="budget-tip">0원으로 두면 예산 막대가 숨겨져요.</p>
     </div>
     <div class="set-row">
+      <b>분류</b>
+      <p>이름을 누르면 고칠 수 있고, 화살표로 순서를 바꿔요. 위에 있을수록 기록할 때 먼저 보여요.</p>
+      <div class="seg" id="catTypeSeg"><button data-ctype="out" class="on">지출 분류</button><button data-ctype="in">수입 분류</button></div>
+      <div class="manage" id="catManage"></div>
+      <div class="set-btns"><button id="addCatBtn">＋ 분류 추가</button></div>
+    </div>
+    <div class="set-row">
       <b>카드</b>
       <p>카드를 등록하면 기록할 때 고를 수 있고, 결제일과 이번 결제 금액을 볼 수 있어요.</p>
       <div class="manage" id="cardManage"></div>
@@ -412,6 +428,22 @@ header { display: flex; align-items: center; justify-content: space-between; gap
   </div>
 </div>
 
+<!-- 분류 고치기 창 -->
+<div class="scrim" id="catScrim" style="z-index:30" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="catTitle">
+    <div class="grab"></div>
+    <div class="sheet-head"><h3 id="catTitle">분류 추가</h3><button class="icon-btn" id="closeCat" aria-label="닫기">✕</button></div>
+    <div class="field"><label for="kName">분류 이름</label><input id="kName" class="text-in" maxlength="10" placeholder="예: 반려동물, 보험" autocomplete="off"></div>
+    <div class="field"><span class="label">색</span><div class="swatches" id="kColors"></div></div>
+    <p class="note" id="kNote" hidden></p>
+    <div class="err" id="kErr"></div>
+    <div class="actions">
+      <button class="btn ghost" id="kDel" hidden>삭제</button>
+      <button class="btn" id="kSave">저장</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" hidden></div>
 
 <script>
@@ -435,7 +467,12 @@ const IN_CATS = [
   { id: "allow", name: "용돈·지원", color: "#7a5bc9" },
   { id: "ietc", name: "기타수입", color: "#8c949c" },
 ];
-const ALL_CATS = Object.fromEntries([...OUT_CATS, ...IN_CATS].map((c) => [c.id, c]));
+// 위 목록은 처음 쓸 때의 기본값이에요. 실제 분류는 data.cats에 저장되고 설정에서 고쳐요.
+const defaultCats = () => ({ out: OUT_CATS.map((c) => ({ ...c })), in: IN_CATS.map((c) => ({ ...c })) });
+const PALETTE = ["#3f9a6b", "#e0803a", "#7a5bc9", "#3b7fd4", "#e3609a", "#d24a43", "#2aa3b5", "#c19a1f", "#9c6b4a", "#4e6b8a", "#6f9a2f", "#b5579e", "#2d5bd7", "#8c949c"];
+// 지운 분류는 숨김(hidden)으로 남겨서 예전 기록의 이름과 색이 그대로 보여요
+const catList = (type) => data.cats[type].filter((c) => !c.hidden);
+const catOf = (id) => data.cats.out.find((c) => c.id === id) || data.cats.in.find((c) => c.id === id) || { id, name: "기타", color: "#8c949c" };
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 const KINDS = { credit: "신용", check: "체크", local: "지역화폐" };
 
@@ -486,10 +523,13 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && Array.isArray(d.items)) return { budget: 0, ...d, cards: Array.isArray(d.cards) ? d.cards : [] };
+      if (d && Array.isArray(d.items)) {
+        const cats = d.cats && Array.isArray(d.cats.out) && Array.isArray(d.cats.in) ? d.cats : defaultCats();
+        return { budget: 0, ...d, cards: Array.isArray(d.cards) ? d.cards : [], cats };
+      }
     }
   } catch (e) {}
-  return { v: 1, budget: 2000000, cards: [], items: makeSamples() };
+  return { v: 1, budget: 2000000, cards: [], cats: defaultCats(), items: makeSamples() };
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
@@ -671,7 +711,7 @@ function renderCats(outs, total) {
   const by = {};
   outs.forEach((i) => { by[i.cat] = (by[i.cat] || 0) + i.amount; });
   const rows = Object.entries(by).sort((a, b) => b[1] - a[1]);
-  const cat = (id) => ALL_CATS[id] || ALL_CATS.etc;
+  const cat = (id) => catOf(id);
   let s = `<div class="stack">` + rows.map(([id, v]) => `<i style="width:${(v / total) * 100}%;background:${cat(id).color}"></i>`).join("") + `</div>`;
   s += `<ul class="cat-list">` + rows.map(([id, v]) => `
     <li><button class="cat-row${filter && filter.k === "cat" && filter.id === id ? " on" : ""}" data-filter="${id}">
@@ -688,7 +728,7 @@ function renderList(items) {
   const fb = $("filterBar");
   if (filter) {
     const sum = shown.filter((i) => i.type !== "charge").reduce((s, i) => s + i.amount, 0);
-    const name = filter.k === "cat" ? ALL_CATS[filter.id]?.name || "기타" : cardById(filter.id)?.name || "카드";
+    const name = filter.k === "cat" ? catOf(filter.id).name : cardById(filter.id)?.name || "카드";
     fb.hidden = false;
     fb.innerHTML = `<span><b>${esc(name)}</b>만 보는 중 · <span class="num">${won(sum)}원</span></span><button data-filter-clear>전체 보기</button>`;
   } else fb.hidden = true;
@@ -718,7 +758,7 @@ function renderList(items) {
             <span class="row-amt num charge">${won(i.amount)}</span>
           </button>`;
         }
-        const c = ALL_CATS[i.cat] || ALL_CATS.etc;
+        const c = catOf(i.cat);
         const sub = [c.name, i.type === "out" ? payLabel(i) : null].filter(Boolean).join(" · ");
         return `<button class="row" data-edit="${esc(i.id)}">
           <span class="badge" style="background:${c.color}">${esc(c.name.slice(0, 1))}</span>
@@ -733,14 +773,14 @@ function renderList(items) {
 function openSheet(id) { $(id).hidden = false; document.body.classList.add("lock"); }
 function closeSheet(id) {
   $(id).hidden = true;
-  if ($("addScrim").hidden && $("setScrim").hidden && $("cardScrim").hidden) document.body.classList.remove("lock");
+  if (["addScrim", "setScrim", "cardScrim", "catScrim"].every((s) => $(s).hidden)) document.body.classList.remove("lock");
 }
 
 function openAdd(item) {
   const defDate = ym === curYm() ? todayStr() : `${ym}-01`;
   // 카드가 하나뿐이면 미리 골라 둬요
   const only = data.cards.filter((c) => c.kind !== "local");
-  form = item ? { ...item } : { id: null, type: "out", amount: 0, cat: "mart", pay: "카드", cardId: only.length === 1 ? only[0].id : null, memo: "", date: defDate };
+  form = item ? { ...item } : { id: null, type: "out", amount: 0, cat: catList("out")[0].id, pay: "카드", cardId: only.length === 1 ? only[0].id : null, memo: "", date: defDate };
   form.bonusTouched = !!item;
   $("addTitle").textContent = item ? "기록 고치기" : "기록하기";
   $("amount").value = form.amount ? won(form.amount) : "";
@@ -772,7 +812,7 @@ function syncForm() {
   }
   $("cardPick").innerHTML = data.cards.map((c) => `<button data-card="${esc(c.id)}" class="${c.id === form.cardId ? "on" : ""}">${esc(c.name)}</button>`).join("") +
     `<button class="add" data-new-card>＋ 카드 등록</button>`;
-  const cats = form.type === "out" ? OUT_CATS : IN_CATS;
+  const cats = catList(form.type);
   if (!cats.some((c) => c.id === form.cat)) form.cat = cats[0].id;
   $("catPick").innerHTML = cats.map((c) => `<button data-cat="${c.id}" class="${c.id === form.cat ? "on" : ""}"><span class="dot" style="background:${c.color}"></span>${c.name}</button>`).join("");
 }
@@ -923,7 +963,8 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
-  if (!$("cardScrim").hidden) closeSheet("cardScrim");
+  if (!$("catScrim").hidden) closeSheet("catScrim");
+  else if (!$("cardScrim").hidden) closeSheet("cardScrim");
   else { closeSheet("addScrim"); closeSheet("setScrim"); }
 });
 
@@ -936,6 +977,7 @@ function openSettings() {
   $("budgetIn").value = data.budget ? won(data.budget) : "";
   disarm($("wipeBtn"), "모든 기록 지우기");
   renderManage();
+  renderCatManage();
   openSheet("setScrim");
 }
 
@@ -1011,6 +1053,80 @@ $("cDel").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 삭제", 
   render(); toast("카드를 지웠어요. 기록은 그대로 남아요.");
 });
 $("addCardBtn").onclick = () => openCard(null);
+
+/* ---------- 분류 관리 ---------- */
+let catType = "out";
+let kform = null;
+function renderCatManage() {
+  document.querySelectorAll("#catTypeSeg button").forEach((b) => b.classList.toggle("on", b.dataset.ctype === catType));
+  const list = catList(catType);
+  const used = (id) => data.items.filter((i) => i.cat === id && !i.sample).length;
+  $("catManage").innerHTML = list.map((c, k) => `<div class="k-row">
+    <button class="k-name" data-edit-cat="${esc(c.id)}"><span class="dot" style="background:${c.color}"></span><span>${esc(c.name)}</span><small class="num">${used(c.id) ? used(c.id) + "건" : ""}</small></button>
+    <button class="icon-btn" data-move-cat="${esc(c.id)}" data-dir="-1" aria-label="${esc(c.name)} 위로" ${k === 0 ? "disabled" : ""}>↑</button>
+    <button class="icon-btn" data-move-cat="${esc(c.id)}" data-dir="1" aria-label="${esc(c.name)} 아래로" ${k === list.length - 1 ? "disabled" : ""}>↓</button>
+  </div>`).join("");
+}
+function moveCat(id, dir) {
+  const all = data.cats[catType];
+  const visible = catList(catType);
+  const k = visible.findIndex((c) => c.id === id);
+  const other = visible[k + dir];
+  if (!other) return;
+  const a = all.indexOf(visible[k]), b = all.indexOf(other);
+  [all[a], all[b]] = [all[b], all[a]];
+  save(); renderCatManage();
+}
+function openCat(cat) {
+  const usedColors = new Set(catList(catType).map((c) => c.color));
+  kform = cat ? { ...cat } : { id: null, name: "", color: PALETTE.find((p) => !usedColors.has(p)) || PALETTE[0] };
+  $("catTitle").textContent = cat ? "분류 고치기" : `${catType === "out" ? "지출" : "수입"} 분류 추가`;
+  $("kName").value = kform.name;
+  $("kErr").textContent = "";
+  const n = cat ? data.items.filter((i) => i.cat === cat.id && !i.sample).length : 0;
+  $("kNote").hidden = !n;
+  $("kNote").textContent = `이 분류로 적은 기록이 ${n}건 있어요. 이름이나 색을 바꾸면 그 기록에도 같이 바뀌어요. 지워도 기록은 남아요.`;
+  $("kDel").hidden = !cat;
+  disarm($("kDel"), "삭제");
+  renderSwatches();
+  openSheet("catScrim");
+  if (!cat) setTimeout(() => $("kName").focus(), 60);
+}
+function renderSwatches() {
+  $("kColors").innerHTML = PALETTE.map((p) => `<button data-color="${p}" class="${p === kform.color ? "on" : ""}" style="background:${p}" aria-label="색 ${p}"></button>`).join("");
+}
+$("kColors").onclick = (e) => { const b = e.target.closest("[data-color]"); if (b) { kform.color = b.dataset.color; renderSwatches(); } };
+$("catTypeSeg").onclick = (e) => { const b = e.target.closest("button"); if (b) { catType = b.dataset.ctype; renderCatManage(); } };
+$("catManage").onclick = (e) => {
+  const mv = e.target.closest("[data-move-cat]");
+  if (mv) { moveCat(mv.dataset.moveCat, Number(mv.dataset.dir)); return; }
+  const ed = e.target.closest("[data-edit-cat]");
+  if (ed) openCat(data.cats[catType].find((c) => c.id === ed.dataset.editCat));
+};
+$("addCatBtn").onclick = () => openCat(null);
+$("closeCat").onclick = () => closeSheet("catScrim");
+$("kName").addEventListener("keydown", (e) => { if (e.key === "Enter") $("kSave").click(); });
+$("kSave").onclick = () => {
+  kform.name = $("kName").value.trim();
+  if (!kform.name) { $("kErr").textContent = "분류 이름을 넣어 주세요."; $("kName").focus(); return; }
+  if (catList(catType).some((c) => c.name === kform.name && c.id !== kform.id)) { $("kErr").textContent = "같은 이름의 분류가 이미 있어요."; return; }
+  const isNew = !kform.id;
+  if (isNew) { kform.id = "u" + uid(); data.cats[catType].push(kform); }
+  else data.cats[catType] = data.cats[catType].map((c) => (c.id === kform.id ? kform : c));
+  if (!save()) return;
+  closeSheet("catScrim");
+  renderCatManage(); render();
+  toast(isNew ? `'${kform.name}' 분류를 만들었어요` : "분류를 고쳤어요");
+};
+$("kDel").onclick = (e) => {
+  if (catList(catType).length <= 1) { $("kErr").textContent = "분류가 하나는 있어야 해요."; return; }
+  arm(e.currentTarget, "한 번 더 누르면 삭제", () => {
+    data.cats[catType] = data.cats[catType].map((c) => (c.id === kform.id ? { ...c, hidden: true } : c));
+    if (filter && filter.id === kform.id) filter = null;
+    save(); closeSheet("catScrim"); renderCatManage(); render();
+    toast(`'${kform.name}' 분류를 지웠어요. 기록은 그대로 남아요.`);
+  });
+};
 $("openSettings").onclick = openSettings;
 $("closeSet").onclick = () => closeSheet("setScrim");
 $("saveBudget").onclick = () => {
@@ -1020,7 +1136,7 @@ $("saveBudget").onclick = () => {
 $("backupBtn").onclick = () => {
   const items = realItems();
   if (!items.length) { toast("아직 백업할 기록이 없어요"); return; }
-  download(`가계부-백업-${todayStr()}.json`, JSON.stringify({ v: 1, budget: data.budget, cards: data.cards, items }, null, 1), "application/json");
+  download(`가계부-백업-${todayStr()}.json`, JSON.stringify({ v: 1, budget: data.budget, cards: data.cards, cats: data.cats, items }, null, 1), "application/json");
 };
 $("csvBtn").onclick = () => {
   const items = realItems().sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -1029,7 +1145,7 @@ $("csvBtn").onclick = () => {
   const lines = [["날짜", "구분", "분류", "금액", "결제", "카드", "보너스", "메모"].join(",")].concat(items.map((i) => [
     i.date,
     { out: "지출", in: "수입", charge: "충전" }[i.type],
-    q(i.type === "charge" ? "" : ALL_CATS[i.cat]?.name || "기타"),
+    q(i.type === "charge" ? "" : catOf(i.cat).name),
     i.type === "out" ? -i.amount : i.amount,
     i.type === "out" ? i.pay : "",
     q(cardById(i.cardId)?.name || ""),
@@ -1050,6 +1166,11 @@ $("restoreIn").onchange = (e) => {
       const fresh = d.items.filter((i) => i && i.id && !have.has(i.id) && i.amount > 0 && /^\d{4}-\d{2}-\d{2}$/.test(i.date) && ["in", "out", "charge"].includes(i.type));
       data.items.push(...fresh);
       const haveCards = new Set(data.cards.map((c) => c.id));
+      ["out", "in"].forEach((t) => {
+        const list = d.cats && Array.isArray(d.cats[t]) ? d.cats[t] : [];
+        const have = new Set(data.cats[t].map((c) => c.id));
+        data.cats[t].push(...list.filter((c) => c && c.id && c.name && !have.has(c.id)));
+      });
       if (Array.isArray(d.cards)) data.cards.push(...d.cards.filter((c) => c && c.id && c.name && KINDS[c.kind] && !haveCards.has(c.id)));
       if (!data.budget && d.budget) data.budget = Number(d.budget) || 0;
       if (save()) { render(); toast(`새 기록 ${fresh.length}건을 불러왔어요`); }
@@ -1059,7 +1180,7 @@ $("restoreIn").onchange = (e) => {
   r.readAsText(file);
 };
 $("wipeBtn").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 모두 지워요", () => {
-  data = { v: 1, budget: 0, cards: [], items: [] };
+  data = { v: 1, budget: 0, cards: [], cats: defaultCats(), items: [] };
   filter = null;
   save(); closeSheet("setScrim"); render(); toast("모두 지웠어요");
 });
