@@ -68,10 +68,10 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 /* 머리 */
 header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 4px; }
 .month { display: flex; align-items: center; gap: 2px; }
-.month h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; min-width: 7.2em; text-align: center; }
+.month h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -0.02em; min-width: 6.6em; text-align: center; white-space: nowrap; }
 .icon-btn { width: 40px; height: 40px; border: 0; border-radius: 12px; background: transparent; font-size: 22px; line-height: 1; color: var(--muted); }
 .icon-btn:active { background: var(--track); }
-.pill { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 14px; font-size: 14px; }
+.pill { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 12px; font-size: 14px; white-space: nowrap; }
 
 /* 예시 안내 */
 .notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--accent-soft); border-radius: 14px; padding: 12px 14px; font-size: 14px; }
@@ -234,6 +234,11 @@ header { display: flex; align-items: center; justify-content: space-between; gap
 .k-row .k-name small { color: var(--muted); font-size: 12px; margin-left: auto; }
 .k-row .icon-btn { width: 36px; height: 36px; font-size: 16px; }
 .k-row .icon-btn:disabled { opacity: .25; cursor: default; }
+.check { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg); cursor: pointer; }
+.check input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--accent); flex: none; }
+.check span { display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+.check b { font-weight: 600; }
+.check small { font-size: 13px; color: var(--muted); }
 .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
 .swatches button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--surface); box-shadow: 0 0 0 1px var(--line); }
 .swatches button.on { box-shadow: 0 0 0 2px var(--ink); }
@@ -336,7 +341,24 @@ header { display: flex; align-items: center; justify-content: space-between; gap
       <span class="label">어떤 카드</span>
       <div class="chips" id="cardPick"></div>
     </div>
+    <div class="field" id="instField" hidden>
+      <label for="months">할부</label>
+      <div class="inline">
+        <select id="months" class="text-in">
+          <option value="1">일시불</option>
+          <option value="2">2개월</option><option value="3">3개월</option><option value="4">4개월</option><option value="5">5개월</option><option value="6">6개월</option>
+          <option value="7">7개월</option><option value="8">8개월</option><option value="9">9개월</option><option value="10">10개월</option><option value="11">11개월</option><option value="12">12개월</option>
+          <option value="18">18개월</option><option value="24">24개월</option><option value="36">36개월</option>
+        </select>
+        <span class="budget-tip" id="instHint"></span>
+      </div>
+    </div>
     <div class="field"><label for="memo">메모</label><input id="memo" class="text-in" maxlength="40" placeholder="예: 이마트 장보기" autocomplete="off"></div>
+    <label class="check" id="subField" for="isSub">
+      <input type="checkbox" id="isSub">
+      <span><b>매달 자동으로 기록 (정기결제)</b><small id="subHint"></small></span>
+    </label>
+    <p class="note" id="subInfo" hidden></p>
     <div class="err" id="addErr"></div>
     <div class="actions">
       <button class="btn ghost" id="delBtn" hidden>삭제</button>
@@ -362,6 +384,11 @@ header { display: flex; align-items: center; justify-content: space-between; gap
       <div class="seg" id="catTypeSeg"><button data-ctype="out" class="on">지출 분류</button><button data-ctype="in">수입 분류</button></div>
       <div class="manage" id="catManage"></div>
       <div class="set-btns"><button id="addCatBtn">＋ 분류 추가</button></div>
+    </div>
+    <div class="set-row">
+      <b>정기결제</b>
+      <p>매달 같은 날 자동으로 적히는 기록이에요. 기록할 때 '매달 자동으로 기록'을 켜면 여기에 생겨요.</p>
+      <div class="manage" id="subManage"></div>
     </div>
     <div class="set-row">
       <b>카드</b>
@@ -424,6 +451,29 @@ header { display: flex; align-items: center; justify-content: space-between; gap
     <div class="actions">
       <button class="btn ghost" id="cDel" hidden>삭제</button>
       <button class="btn" id="cSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- 정기결제 고치기 창 -->
+<div class="scrim" id="subScrim" style="z-index:30" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="subTitle">
+    <div class="grab"></div>
+    <div class="sheet-head"><h3 id="subTitle">정기결제</h3><button class="icon-btn" id="closeSub" aria-label="닫기">✕</button></div>
+    <p class="budget-tip" id="sInfo"></p>
+    <div class="field"><label for="sMemo">이름</label><input id="sMemo" class="text-in" maxlength="40" autocomplete="off"></div>
+    <div class="field">
+      <label for="sAmount">금액</label>
+      <div class="amount-box"><input id="sAmount" class="num" inputmode="numeric" autocomplete="off" placeholder="0"><span>원</span></div>
+    </div>
+    <div class="field"><label for="sDay">기록하는 날</label>
+      <div class="inline">매달 <input id="sDay" class="text-in day-in num" type="number" inputmode="numeric" min="1" max="31"> 일 <span class="budget-tip">(없는 날은 말일)</span></div>
+    </div>
+    <p class="note">바꾼 내용은 다음에 적힐 때부터 적용돼요. 이미 적힌 기록은 기록 목록에서 고쳐 주세요.</p>
+    <div class="err" id="sErr"></div>
+    <div class="actions">
+      <button class="btn ghost" id="sDel">그만두기</button>
+      <button class="btn" id="sSave">저장</button>
     </div>
   </div>
 </div>
@@ -525,11 +575,11 @@ function load() {
       const d = JSON.parse(raw);
       if (d && Array.isArray(d.items)) {
         const cats = d.cats && Array.isArray(d.cats.out) && Array.isArray(d.cats.in) ? d.cats : defaultCats();
-        return { budget: 0, ...d, cards: Array.isArray(d.cards) ? d.cards : [], cats };
+        return { budget: 0, ...d, cards: Array.isArray(d.cards) ? d.cards : [], subs: Array.isArray(d.subs) ? d.subs : [], cats };
       }
     }
   } catch (e) {}
-  return { v: 1, budget: 2000000, cards: [], cats: defaultCats(), items: makeSamples() };
+  return { v: 1, budget: 2000000, cards: [], subs: [], cats: defaultCats(), items: makeSamples() };
 }
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(data)); return true; }
@@ -583,6 +633,44 @@ function localBalance(id) {
   const opening = cardById(id)?.opening || 0;
   const charged = data.items.filter((i) => i.type === "charge" && i.cardId === id).reduce((s, i) => s + i.amount + (i.bonus || 0), 0);
   return opening + charged - sumCard(id);
+}
+/* 할부: 산 날 전체 금액이 지출로 잡히고, 카드 결제액만 개월 수로 나눠요 */
+const mIdx = (y, m0) => y * 12 + m0;
+const idxDate = (idx, day) => dateAt(Math.floor(idx / 12), idx % 12, day);
+// 이 카드로 이 날 쓴 돈이 들어가는 결제월 (월 번호)
+function payIdxOf(card, dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const startThis = dateAt(y, m - 1, card.startDay).getDate();
+  return mIdx(y, m - 1) - (d >= startThis ? 0 : 1) + card.offset;
+}
+// k번째 회차 금액. 나눠떨어지지 않는 원은 첫 회차에 얹어요
+function portion(i, k) {
+  const n = i.months || 1, base = Math.floor(i.amount / n);
+  return k === 0 ? i.amount - base * (n - 1) : base;
+}
+function billFor(card, pay) {
+  const target = mIdx(pay.getFullYear(), pay.getMonth());
+  let sum = 0, inst = 0;
+  data.items.forEach((i) => {
+    if (i.type !== "out" || i.cardId !== card.id) return;
+    const k = target - payIdxOf(card, i.date);
+    if (k >= 0 && k < (i.months || 1)) { sum += portion(i, k); if (i.months > 1) inst += portion(i, k); }
+  });
+  return { sum, inst };
+}
+// 오늘 이후에 빠져나갈 할부 금액
+function instLeft(card) {
+  const now = new Date();
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let left = 0, count = 0;
+  data.items.forEach((i) => {
+    if (i.type !== "out" || i.cardId !== card.id || !(i.months > 1)) return;
+    const p0 = payIdxOf(card, i.date);
+    let any = false;
+    for (let k = 0; k < i.months; k++) if (idxDate(p0 + k, card.payDay) >= t) { left += portion(i, k); any = true; }
+    if (any) count++;
+  });
+  return { left, count };
 }
 function payLabel(i) {
   if (i.pay !== "카드") return i.pay;
@@ -644,10 +732,16 @@ function renderCards(items) {
     } else {
       head = `<span class="num">이 달 ${won(monthOut(c.id))}원</span>`;
       if (c.kind === "credit") {
-        lines = upcoming(c).map((p) => `<div class="cc-line">
+        lines = upcoming(c).map((p) => {
+          const b = billFor(c, p.pay);
+          return `<div class="cc-line">
             <span>${md(p.pay)} 결제<span class="state ${p.closed ? "fixed" : "open"}">${p.closed ? "확정" : "쌓이는 중"}</span> · ${dot(p.start)}~${dot(p.end)}</span>
-            <span class="num">${won(sumCard(c.id, ymd(p.start), ymd(p.end)))}원</span></div>`).join("") +
-          `<div class="cc-rule">${ruleText(c)}</div>`;
+            <span class="num">${won(b.sum)}원</span></div>` +
+            (b.inst ? `<div class="cc-rule" style="text-align:right">그중 할부 ${won(b.inst)}원</div>` : "");
+        }).join("");
+        const il = instLeft(c);
+        if (il.count) lines += `<div class="cc-line"><span>앞으로 나갈 할부 (${il.count}건)</span><span class="num">${won(il.left)}원</span></div>`;
+        lines += `<div class="cc-rule">${ruleText(c)}</div>`;
       }
     }
     return `<button class="cc${on}" data-filter-card="${esc(c.id)}">
@@ -762,7 +856,7 @@ function renderList(items) {
         const sub = [c.name, i.type === "out" ? payLabel(i) : null].filter(Boolean).join(" · ");
         return `<button class="row" data-edit="${esc(i.id)}">
           <span class="badge" style="background:${c.color}">${esc(c.name.slice(0, 1))}</span>
-          <span class="row-main"><b>${esc(i.memo || c.name)}${i.sample ? '<span class="sample-tag">예시</span>' : ""}</b><span>${esc(sub)}</span></span>
+          <span class="row-main"><b>${esc(i.memo || c.name)}${i.sample ? '<span class="sample-tag">예시</span>' : ""}${i.months > 1 ? `<span class="kind-tag">${i.months}개월 할부</span>` : ""}${i.subId ? '<span class="kind-tag local">매달</span>' : ""}</b><span>${esc(sub)}</span></span>
           <span class="row-amt num ${i.type === "in" ? "in" : ""}">${i.type === "in" ? "+" : "−"}${won(i.amount)}</span>
         </button>`;
       }).join("") + `</div>`;
@@ -773,7 +867,7 @@ function renderList(items) {
 function openSheet(id) { $(id).hidden = false; document.body.classList.add("lock"); }
 function closeSheet(id) {
   $(id).hidden = true;
-  if (["addScrim", "setScrim", "cardScrim", "catScrim"].every((s) => $(s).hidden)) document.body.classList.remove("lock");
+  if (["addScrim", "setScrim", "cardScrim", "catScrim", "subScrim"].every((s) => $(s).hidden)) document.body.classList.remove("lock");
 }
 
 function openAdd(item) {
@@ -788,6 +882,8 @@ function openAdd(item) {
   $("bonusRate").value = item && item.rate != null ? item.rate : "";
   $("memo").value = form.memo || "";
   $("date").value = form.date;
+  $("months").value = String(form.months || 1);
+  $("isSub").checked = false;
   $("addErr").textContent = "";
   $("delBtn").hidden = !item;
   disarm($("delBtn"), "삭제");
@@ -803,6 +899,17 @@ function syncForm() {
   $("catField").hidden = charge;
   $("chargeField").hidden = !charge;
   $("cardField").hidden = !(form.type === "out" && form.pay === "카드");
+  const card = cardById(form.cardId);
+  $("instField").hidden = !(form.type === "out" && form.pay === "카드" && card && card.kind === "credit");
+  $("subField").hidden = charge || !!form.subId;
+  $("subInfo").hidden = !form.subId;
+  if (form.subId) {
+    const s = data.subs.find((x) => x.id === form.subId);
+    $("subInfo").innerHTML = s
+      ? `정기결제로 저절로 적힌 기록이에요 (매달 ${s.day}일). <button class="link-btn" data-open-settings>정기결제 관리</button>`
+      : "정기결제로 적혔던 기록이에요. 그 정기결제는 그만둔 상태예요.";
+  }
+  updateHints();
   if (charge) {
     const locals = localCards();
     if (!locals.some((c) => c.id === form.cardId)) form.cardId = locals.length === 1 ? locals[0].id : null;
@@ -815,6 +922,23 @@ function syncForm() {
   const cats = catList(form.type);
   if (!cats.some((c) => c.id === form.cat)) form.cat = cats[0].id;
   $("catPick").innerHTML = cats.map((c) => `<button data-cat="${c.id}" class="${c.id === form.cat ? "on" : ""}"><span class="dot" style="background:${c.color}"></span>${c.name}</button>`).join("");
+}
+function updateHints() {
+  const n = Number($("months").value) || 1;
+  const amt = digits($("amount").value);
+  const card = cardById(form.cardId);
+  const date = $("date").value;
+  let h = "";
+  if (n > 1 && amt) {
+    h = `매달 약 ${won(Math.floor(amt / n))}원씩 ${n}번`;
+    if (card && card.kind === "credit" && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const last = idxDate(payIdxOf(card, date) + n - 1, card.payDay);
+      h += ` · ${last.getFullYear()}년 ${last.getMonth() + 1}월 결제까지`;
+    }
+  }
+  $("instHint").textContent = h;
+  const d = Number((date || "").slice(8, 10));
+  $("subHint").textContent = d ? `다음 달부터 매달 ${d}일에 같은 내용이 저절로 적혀요` : "";
 }
 // 지역화폐 보너스를 비율대로 미리 채워요 (보너스 금액을 직접 고치면 그대로 둬요)
 function autoBonus() {
@@ -840,10 +964,14 @@ function saveForm() {
     form.rate = Math.max(0, Math.min(50, Number($("bonusRate").value) || 0));
     form.cat = null; form.pay = null;
     cardById(form.cardId).bonusRate = form.rate; // 다음 충전 때 이 비율을 먼저 채워요
+    delete form.months;
   } else {
     delete form.bonus; delete form.rate;
     if (form.type !== "out" || form.pay !== "카드") form.cardId = null;
+    form.months = $("instField").hidden ? 1 : Number($("months").value) || 1;
+    if (form.months <= 1) delete form.months;
   }
+  const makeSub = !$("subField").hidden && $("isSub").checked;
   delete form.bonusTouched;
   const wasSample = form.sample;
   delete form.sample;
@@ -854,12 +982,21 @@ function saveForm() {
     form.id = uid(); form.created = Date.now();
     data.items.push(form);
   }
+  // 이 기록이 이번 달 몫이고, 다음 달부터 runSubs가 적어요
+  if (makeSub) {
+    const sid = "r" + uid();
+    delete form.months;
+    data.subs.push({ id: sid, type: form.type, amount: form.amount, cat: form.cat, pay: form.pay, cardId: form.cardId, memo: form.memo, day: Number(form.date.slice(8, 10)), last: form.date.slice(0, 7) });
+    form.subId = sid;
+  }
   if (hasSamples()) dropSamples();
   if (!save()) return;
   ym = form.date.slice(0, 7);
   closeSheet("addScrim");
   render();
-  toast(`${{ out: "지출", in: "수입", charge: "충전" }[form.type]} ${won(form.amount)}원을 기록했어요`);
+  toast(makeSub
+    ? `매달 ${Number(form.date.slice(8, 10))}일 정기결제로 등록했어요`
+    : `${{ out: "지출", in: "수입", charge: "충전" }[form.type]} ${won(form.amount)}원을 기록했어요`);
 }
 
 // 두 번 눌러야 지워지는 버튼
@@ -919,6 +1056,12 @@ function pickCard(e) {
 $("cardPick").onclick = pickCard;
 $("localPick").onclick = pickCard;
 $("bonus").addEventListener("input", () => { form.bonusTouched = true; });
+// 정기결제와 할부는 함께 쓰지 않아요
+$("months").addEventListener("change", () => { if (Number($("months").value) > 1) $("isSub").checked = false; updateHints(); });
+$("isSub").addEventListener("change", () => { if ($("isSub").checked) $("months").value = "1"; updateHints(); });
+$("amount").addEventListener("input", updateHints);
+$("date").addEventListener("input", updateHints);
+$("date").addEventListener("change", updateHints);
 $("bonusRate").addEventListener("input", () => { form.bonusTouched = false; autoBonus(); });
 $("amount").addEventListener("input", autoBonus);
 $("catPick").onclick = (e) => { const b = e.target.closest("button"); if (b) { form.cat = b.dataset.cat; syncForm(); } };
@@ -940,6 +1083,7 @@ moneyInput($("amount"));
 moneyInput($("budgetIn"));
 moneyInput($("bonus"));
 moneyInput($("cBal"));
+moneyInput($("sAmount"));
 $("memo").addEventListener("keydown", (e) => { if (e.key === "Enter") saveForm(); });
 
 document.addEventListener("click", (e) => {
@@ -964,6 +1108,7 @@ document.addEventListener("click", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
   if (!$("catScrim").hidden) closeSheet("catScrim");
+  else if (!$("subScrim").hidden) closeSheet("subScrim");
   else if (!$("cardScrim").hidden) closeSheet("cardScrim");
   else { closeSheet("addScrim"); closeSheet("setScrim"); }
 });
@@ -978,6 +1123,7 @@ function openSettings() {
   disarm($("wipeBtn"), "모든 기록 지우기");
   renderManage();
   renderCatManage();
+  renderSubManage();
   openSheet("setScrim");
 }
 
@@ -1053,6 +1199,61 @@ $("cDel").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 삭제", 
   render(); toast("카드를 지웠어요. 기록은 그대로 남아요.");
 });
 $("addCardBtn").onclick = () => openCard(null);
+
+/* ---------- 정기결제 ---------- */
+// 지난번에 적은 달(last) 다음 달부터, 그 달의 날짜가 지났으면 적어요. 며칠 안 열어도 밀린 달까지 채워요.
+function runSubs() {
+  const t = todayStr(), cur = curYm();
+  let n = 0;
+  data.subs.forEach((s) => {
+    let [y, m] = s.last.split("-").map(Number);
+    for (;;) {
+      const nx = new Date(y, m, 1); // m은 1부터 세니까 이게 다음 달이에요
+      y = nx.getFullYear(); m = nx.getMonth() + 1;
+      const key = `${y}-${pad(m)}`;
+      const date = ymd(dateAt(y, m - 1, s.day));
+      if (key > cur || date > t) break;
+      data.items.push({ id: uid(), type: s.type, amount: s.amount, cat: s.cat, pay: s.pay, cardId: s.cardId, memo: s.memo, date, subId: s.id, created: Date.now() });
+      s.last = key; n++;
+    }
+  });
+  if (n && save()) toast(`정기결제 ${n}건을 저절로 적었어요`);
+}
+function renderSubManage() {
+  $("subManage").innerHTML = data.subs.length
+    ? data.subs.map((s) => `<button class="m-row" data-edit-sub="${esc(s.id)}">
+        <b>${esc(s.memo || catOf(s.cat).name)}</b><span class="num">매달 ${s.day}일 · ${s.type === "in" ? "+" : ""}${won(s.amount)}원 ›</span></button>`).join("")
+    : `<div class="empty-note">아직 등록한 정기결제가 없어요.</div>`;
+}
+let sform = null;
+function openSub(s) {
+  sform = { ...s };
+  $("sInfo").textContent = [s.type === "in" ? "수입" : "지출", catOf(s.cat).name, s.type === "out" ? payLabel(s) : null].filter(Boolean).join(" · ");
+  $("sMemo").value = s.memo || "";
+  $("sAmount").value = won(s.amount);
+  $("sDay").value = s.day;
+  $("sErr").textContent = "";
+  disarm($("sDel"), "그만두기");
+  openSheet("subScrim");
+}
+$("subManage").onclick = (e) => { const b = e.target.closest("[data-edit-sub]"); if (b) openSub(data.subs.find((s) => s.id === b.dataset.editSub)); };
+$("closeSub").onclick = () => closeSheet("subScrim");
+$("sSave").onclick = () => {
+  const amount = digits($("sAmount").value), day = Math.round(Number($("sDay").value));
+  if (!amount) { $("sErr").textContent = "금액을 넣어 주세요."; return; }
+  if (!okDay(day)) { $("sErr").textContent = "날짜는 1~31일로 넣어 주세요."; return; }
+  Object.assign(sform, { memo: $("sMemo").value.trim(), amount, day });
+  data.subs = data.subs.map((s) => (s.id === sform.id ? sform : s));
+  if (!save()) return;
+  closeSheet("subScrim");
+  runSubs(); renderSubManage(); render();
+  toast("정기결제를 고쳤어요");
+};
+$("sDel").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 그만둬요", () => {
+  data.subs = data.subs.filter((s) => s.id !== sform.id);
+  save(); closeSheet("subScrim"); renderSubManage(); render();
+  toast("정기결제를 그만뒀어요. 이미 적힌 기록은 남아요.");
+});
 
 /* ---------- 분류 관리 ---------- */
 let catType = "out";
@@ -1136,19 +1337,20 @@ $("saveBudget").onclick = () => {
 $("backupBtn").onclick = () => {
   const items = realItems();
   if (!items.length) { toast("아직 백업할 기록이 없어요"); return; }
-  download(`가계부-백업-${todayStr()}.json`, JSON.stringify({ v: 1, budget: data.budget, cards: data.cards, cats: data.cats, items }, null, 1), "application/json");
+  download(`가계부-백업-${todayStr()}.json`, JSON.stringify({ v: 1, budget: data.budget, cards: data.cards, subs: data.subs, cats: data.cats, items }, null, 1), "application/json");
 };
 $("csvBtn").onclick = () => {
   const items = realItems().sort((a, b) => (a.date < b.date ? -1 : 1));
   if (!items.length) { toast("아직 저장할 기록이 없어요"); return; }
   const q = (s) => `"${String(s).replace(/"/g, '""')}"`;
-  const lines = [["날짜", "구분", "분류", "금액", "결제", "카드", "보너스", "메모"].join(",")].concat(items.map((i) => [
+  const lines = [["날짜", "구분", "분류", "금액", "결제", "카드", "할부", "보너스", "메모"].join(",")].concat(items.map((i) => [
     i.date,
     { out: "지출", in: "수입", charge: "충전" }[i.type],
     q(i.type === "charge" ? "" : catOf(i.cat).name),
     i.type === "out" ? -i.amount : i.amount,
     i.type === "out" ? i.pay : "",
     q(cardById(i.cardId)?.name || ""),
+    i.months > 1 ? i.months + "개월" : "",
     i.bonus || "",
     q(i.memo || ""),
   ].join(",")));
@@ -1171,6 +1373,8 @@ $("restoreIn").onchange = (e) => {
         const have = new Set(data.cats[t].map((c) => c.id));
         data.cats[t].push(...list.filter((c) => c && c.id && c.name && !have.has(c.id)));
       });
+      const haveSubs = new Set(data.subs.map((s) => s.id));
+      if (Array.isArray(d.subs)) data.subs.push(...d.subs.filter((s) => s && s.id && s.amount > 0 && okDay(s.day) && /^\d{4}-\d{2}$/.test(s.last) && !haveSubs.has(s.id)));
       if (Array.isArray(d.cards)) data.cards.push(...d.cards.filter((c) => c && c.id && c.name && KINDS[c.kind] && !haveCards.has(c.id)));
       if (!data.budget && d.budget) data.budget = Number(d.budget) || 0;
       if (save()) { render(); toast(`새 기록 ${fresh.length}건을 불러왔어요`); }
@@ -1180,14 +1384,15 @@ $("restoreIn").onchange = (e) => {
   r.readAsText(file);
 };
 $("wipeBtn").onclick = (e) => arm(e.currentTarget, "한 번 더 누르면 모두 지워요", () => {
-  data = { v: 1, budget: 0, cards: [], cats: defaultCats(), items: [] };
+  data = { v: 1, budget: 0, cards: [], subs: [], cats: defaultCats(), items: [] };
   filter = null;
   save(); closeSheet("setScrim"); render(); toast("모두 지웠어요");
 });
 
 // 다른 앱에 다녀오면 날짜가 바뀌었을 수 있어요
-document.addEventListener("visibilitychange", () => { if (!document.hidden) render(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { runSubs(); render(); } });
 
+runSubs();
 render();
 
 if ("serviceWorker" in navigator && location.protocol === "https:") {
